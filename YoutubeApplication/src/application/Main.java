@@ -4,6 +4,8 @@ import java.awt.Desktop;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.jsoup.Jsoup;
@@ -178,6 +180,51 @@ public class Main extends Application {
 		@Override
 		public String toString() {
 			return title;
+		}
+	}
+	
+	public class YoutubeDb{
+		
+		private PreparedStatement pst;
+		private ResultSet rs;
+		
+		public ObservableList<YoutubeData> loadData(){
+			
+			ObservableList<YoutubeData> tempOv = FXCollections.observableArrayList();
+			
+			String query = "select * from Youtube";
+			
+			try {
+				
+				pst = conn.prepareStatement(query);
+				rs = pst.executeQuery();
+				
+				while(rs.next()) {
+					String title = rs.getString("Title");
+					String url = rs.getString("Url");
+					
+					YoutubeData data = new YoutubeData(title, url);
+					
+					tempOv.add(data);
+				}
+				
+				rs.close();
+				pst.close();
+				
+			} catch(Exception e) {
+				System.out.println("Data acquisition error");
+			}
+			
+			return tempOv;
+			
+		}
+		
+		public void insertData(YoutubeData data) {
+			
+		}
+		
+		public void deleteData(YoutubeData data) {
+			
 		}
 	}
 }
