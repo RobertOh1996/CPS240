@@ -1,12 +1,13 @@
 package application;
-
+	
 import java.awt.Desktop;
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -26,16 +27,24 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 
-
-public class Main extends Application {
+public class YoutubeView extends Application {
 	
 	private Connection conn;
+	
+	public Connection getConn() {
+		return conn;
+	}
+	
+	public YoutubeView() {
+		
+	}
 
 	@Override
 	public void start(Stage primaryStage) {
 		try {
-			ListView<YoutubeData> lv = new ListView<>();
-			ObservableList<YoutubeData> ov = FXCollections.observableArrayList();
+			
+			ListView<YoutubeModel> lv = new ListView<>();
+			ObservableList<YoutubeModel> ov = FXCollections.observableArrayList();
 			lv.setItems(ov);
 			
 			TextField addTf = new TextField();
@@ -46,53 +55,6 @@ public class Main extends Application {
 			Button addBt = new Button("Add");
 			Button removeBt = new Button("Remove");
 			
-			//Button
-			addBt.setOnAction(e -> {
-				
-				String url = addTf.getText().trim();
-				
-				if(!url.isEmpty()) {
-					String title = getYoutubeTitle(url);
-					
-					YoutubeData ytData = new YoutubeData(title, url);
-					
-					if(!title.trim().isEmpty()) {
-						ov.add(ytData);
-						addTf.clear();
-					}
-				}
-				
-			});
-			
-			removeBt.setOnAction(e -> {
-				
-				YoutubeData selected = lv.getSelectionModel().getSelectedItem();
-				
-				if(selected != null) {
-					ov.remove(selected);
-				}
-				
-			});
-
-			loadBt.setOnAction(e -> {
-				
-				YoutubeData selected = lv.getSelectionModel().getSelectedItem();
-				
-				if(selected != null) {
-					try {
-						Desktop.getDesktop().browse(new URI(selected.getUrl()));
-					} catch(Exception e2) {
-						System.out.println("Web load error");
-					}
-				}
-	
-			});
-			
-			//TextField
-			addTf.setOnAction(e -> {
-				addBt.fire();
-			});
-			
 			HBox hb = new HBox(addTf, loadBt, addBt, removeBt);
 			hb.setSpacing(2);
 			
@@ -102,6 +64,69 @@ public class Main extends Application {
 			
 			//db
 			conn = dbConnector();
+			ov.addAll(new YoutubeDb().loadData());
+			
+			//button
+			addBt.setOnAction(e -> {
+				
+				String url = addTf.getText().trim();
+				
+				if(!url.isEmpty()) {
+					
+					String title = getYoutubeTitle(url);
+					
+					YoutubeModel ytData = new YoutubeModel(title, url);
+					
+					if(!title.trim().isEmpty()) {
+						ov.add(ytData);
+						addTf.clear();
+						
+						//db
+						new YoutubeDb().insertData(ytData);
+					}				
+				}
+				
+			});
+			
+			removeBt.setOnAction(e -> {
+				
+				YoutubeModel selected = lv.getSelectionModel().getSelectedItem();
+				
+				if(selected != null) {
+					ov.remove(selected);
+					
+					//db
+					new YoutubeDb().deleteData(selected);
+				}
+				
+			});
+			
+			loadBt.setOnAction(e -> {
+				
+				YoutubeModel selected = lv.getSelectionModel().getSelectedItem();
+				
+				if(selected != null) {
+					
+					try {
+						Desktop.getDesktop().browse(new URI(selected.getUrl()));
+					} catch (IOException e1) {
+						e1.printStackTrace();
+						System.out.println("Web load error from IOException");
+					} catch (URISyntaxException e1) {
+						e1.printStackTrace();
+						System.out.println("Web load error from URISyntaxException");
+					}
+					
+				}
+				
+			});
+			
+			//textField
+			addTf.setOnAction(e -> {
+				
+				addBt.fire();
+				
+			});
 			
 			Scene scene = new Scene(vb, 400, 400);
 			
@@ -120,50 +145,54 @@ public class Main extends Application {
 		launch(args);
 	}
 	
-	public Connection dbConnector() {		
+	public Connection dbConnector(){		
 		
 		try {
+			
 			if(conn == null) {
 				Class.forName("org.sqlite.JDBC");
-				conn = DriverManager.getConnection("jdbc:sqlite:sql/SimpleYooutube.sqlite");
-				System.out.println("Successfully connected to database");
+				conn = DriverManager.getConnection("jdbc:sqlite:sql/SimpleYoutube.sqlite");
+				System.out.println("Database successfully connected!");
 				return conn;
 			} else {
 				return conn;
 			}
 			
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-			return null;
-		} catch (ClassNotFoundException e) {			
-			e.printStackTrace();
+			System.out.println("SQL connection error");
 			return null;
 		}
+		
 	}
 	
 	public String getYoutubeTitle(String youtubeUrl) {
+		
 		youtubeUrl = "https://www.youtube.com/oembed?url=" + youtubeUrl + "&format=xml";
 		
 		try {
-			Document document = Jsoup.connect(youtubeUrl).get();
 			
+			Document document = Jsoup.connect(youtubeUrl).get();
 			Element titleEle = document.getElementsByTag("title").get(0);
 			
 			String title = titleEle.text();
-			
 			return title;
-		} catch(Exception e) {
-			System.out.println("Error");
-			return null;
+			
+		} catch(IOException e){
+			
+			e.printStackTrace();			
+			System.out.println("Titile acquisition error");
+			
+			return "";
 		}
 	}
 	
-	class YoutubeData{
+	class YoutubeModel{
 		
 		private String title;
 		private String url;
 		
-		public YoutubeData(String title, String url) {
+		public YoutubeModel(String title, String url) {
 			super();
 			this.title = title;
 			this.url = url;
@@ -180,17 +209,20 @@ public class Main extends Application {
 		@Override
 		public String toString() {
 			return title;
-		}
+		}	
+		
 	}
 	
-	public class YoutubeDb{
+	public class YoutubeDb {
+		
+		YoutubeView yt = new YoutubeView();
 		
 		private PreparedStatement pst;
 		private ResultSet rs;
 		
-		public ObservableList<YoutubeData> loadData(){
+		public ObservableList<YoutubeModel> loadData(){
 			
-			ObservableList<YoutubeData> tempOv = FXCollections.observableArrayList();
+			ObservableList<YoutubeModel> tempOv = FXCollections.observableArrayList();
 			
 			String query = "select * from Youtube";
 			
@@ -200,10 +232,11 @@ public class Main extends Application {
 				rs = pst.executeQuery();
 				
 				while(rs.next()) {
+					
 					String title = rs.getString("Title");
 					String url = rs.getString("Url");
 					
-					YoutubeData data = new YoutubeData(title, url);
+					YoutubeModel data = new YoutubeModel(title, url);
 					
 					tempOv.add(data);
 				}
@@ -212,19 +245,49 @@ public class Main extends Application {
 				pst.close();
 				
 			} catch(Exception e) {
+				e.printStackTrace();
 				System.out.println("Data acquisition error");
 			}
 			
-			return tempOv;
+			return tempOv;		
+		}
+		
+		public void insertData(YoutubeModel data) {
+			
+			String query = "Insert or Replace into Youtube (Title, Url) Values (?, ?)";
+			
+			try {
+				
+				pst = yt.getConn().prepareStatement(query);
+				pst.setString(1, data.getTitle());
+				pst.setString(2, data.getUrl());
+				pst.execute();
+				pst.close();
+				
+			} catch(Exception e) {
+				e.printStackTrace();
+				System.out.println("Database insertion error");
+			}
 			
 		}
 		
-		public void insertData(YoutubeData data) {
+		public void deleteData(YoutubeModel data) {
 			
-		}
-		
-		public void deleteData(YoutubeData data) {
+			String query = "delete from Youtube where Url = ?";
+			
+			try {
+				
+				pst = yt.getConn().prepareStatement(query);
+				pst.setString(1, data.getUrl());
+				pst.execute();
+				pst.close();
+				
+			} catch(Exception e) {
+				e.printStackTrace();
+				System.out.println("Database deletion error");
+			}
 			
 		}
 	}
+
 }
