@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<book>
+	<chapter id="1">
+		<title>The First Chapter</title>
+		<pagecount>25</pagecount>
+	</chapter>
+	<chapter id="2">
+		<title>The Second Chapter</title>
+		<pagecount>47</pagecount>
+	</chapter>
+</book>
