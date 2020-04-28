@@ -31,7 +31,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -81,6 +83,7 @@ public class YoutubeView extends Application {
 			searchTf.setPrefWidth(300);
 
 			// event-tf
+			// search Function
 			searchTf.textProperty().addListener((a, oldvalue, newValue) -> {
 
 				String search = searchTf.getText().toLowerCase().trim();
@@ -108,6 +111,7 @@ public class YoutubeView extends Application {
 			addBt.setFocusTraversable(false);
 			removeBt.setFocusTraversable(false);
 			chromeCb.setFocusTraversable(false);
+			lv.setFocusTraversable(false);
 
 			VBox vb = new VBox(hb, hb2, lv);
 			vb.setSpacing(2);
@@ -118,7 +122,8 @@ public class YoutubeView extends Application {
 			ov.addAll(new YoutubeDb().loadData());
 
 			/**
-			 * Dummy Fuction When a video link is copied, print title, url, and add the link
+			 * Dummy Fuction 
+			 * When a video link is copied, print title, url, and add the link
 			 * into database.
 			 */
 			// Clipboard
@@ -230,6 +235,17 @@ public class YoutubeView extends Application {
 					loadBt.fire();
 				}
 			});
+			
+			ContextMenu contextMenu = new ContextMenu();
+			
+			MenuItem remove = new MenuItem("Remove");
+			remove.setOnAction(e -> {
+				removeBt.fire();				
+			});
+			
+			contextMenu.getItems().add(remove);
+			
+			lv.setContextMenu(contextMenu);
 
 			// button
 			addBt.setOnAction(e -> {
@@ -378,32 +394,6 @@ public class YoutubeView extends Application {
 
 			return "";
 		}
-	}
-
-	class YoutubeModel {
-
-		private String title;
-		private String url;
-
-		public YoutubeModel(String title, String url) {
-			super();
-			this.title = title;
-			this.url = url;
-		}
-
-		public String getTitle() {
-			return title;
-		}
-
-		public String getUrl() {
-			return url;
-		}
-
-		@Override
-		public String toString() {
-			return title;
-		}
-
 	}
 
 	public class YoutubeDb {
